@@ -2037,8 +2037,7 @@ static Instruction *foldTruncShuffle(ShuffleVectorInst &Shuf,
     if (Mask[i] == UndefMaskElem)
       continue;
     uint64_t LSBIndex = IsBigEndian ? (i + 1) * TruncRatio - 1 : i * TruncRatio;
-    assert(LSBIndex <= std::numeric_limits<int32_t>::max() &&
-           "Overflowed 32-bits");
+    assert(LSBIndex <= INT32_MAX && "Overflowed 32-bits");
     if (Mask[i] != (int)LSBIndex)
       return nullptr;
   }
@@ -2076,9 +2075,8 @@ static Instruction *narrowVectorSelect(ShuffleVectorInst &Shuf,
 
   // shuf (sel (shuf NarrowCond, undef, WideMask), X, Y), undef, NarrowMask) -->
   // sel NarrowCond, (shuf X, undef, NarrowMask), (shuf Y, undef, NarrowMask)
-  Value *Undef = UndefValue::get(X->getType());
-  Value *NarrowX = Builder.CreateShuffleVector(X, Undef, Shuf.getShuffleMask());
-  Value *NarrowY = Builder.CreateShuffleVector(Y, Undef, Shuf.getShuffleMask());
+  Value *NarrowX = Builder.CreateShuffleVector(X, Shuf.getShuffleMask());
+  Value *NarrowY = Builder.CreateShuffleVector(Y, Shuf.getShuffleMask());
   return SelectInst::Create(NarrowCond, NarrowX, NarrowY);
 }
 
@@ -2445,8 +2443,7 @@ Instruction *InstCombinerImpl::visitShuffleVectorInst(ShuffleVectorInst &SVI) {
         SmallVector<int, 16> ShuffleMask(SrcNumElems, -1);
         for (unsigned I = 0, E = MaskElems, Idx = BegIdx; I != E; ++Idx, ++I)
           ShuffleMask[I] = Idx;
-        V = Builder.CreateShuffleVector(V, UndefValue::get(V->getType()),
-                                        ShuffleMask,
+        V = Builder.CreateShuffleVector(V, ShuffleMask,
                                         SVI.getName() + ".extract");
         BegIdx = 0;
       }
